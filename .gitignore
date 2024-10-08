@@ -14,6 +14,9 @@
 *.exe
 *.c
 *.json
+essay/data/processed/train_essays.csv
+essay/data/DAIGT_V2/train_v2_drcat_02.csv
+
 
 
 cache-v2
