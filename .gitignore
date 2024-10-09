@@ -13,8 +13,6 @@
 *.bin
 *.exe
 *.c
-*.json
-
 
 cache-v2
 cmakeFiles-v1
