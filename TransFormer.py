@@ -1,4 +1,4 @@
-from transformers import BertTokenizer, BertForSequenceClassification, Trainer, TrainingArguments
+from transformers import DistilBertTokenizer, BertForSequenceClassification, Trainer, TrainingArguments
 from sklearn.model_selection import train_test_split
 import torch
 from torch.utils.data import Dataset
@@ -8,9 +8,14 @@ df = pd.read_csv("combined_dialogue_data.csv")
 texts = df["dialogue"].tolist()
 labels = df["label"].tolist()
 
-X_train, X_test, y_train, y_test = train_test_split(texts, labels, test_size=0.2, random_state=42)
+train_texts, test_texts, train_labels, test_labels = train_test_split(texts, labels, test_size=0.2, random_state=42)
 
-tokenizer = BertTokenizer.from_pretrained('distilbert-base-uncased')
+train_df = pd.DataFrame({"dialogue": train_texts, "label": train_labels})
+test_df = pd.DataFrame({"dialogue": test_texts, "label": test_labels})
+
+train_df.to_csv("train_dataset.csv", index=False)
+test_df.to_csv("test_dataset.csv", index=False)
+tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
 
 class TextDataset(Dataset):
     def __init__(self, texts, labels):
@@ -25,17 +30,20 @@ class TextDataset(Dataset):
         item['labels'] = self.labels[idx]
         return item
 
-train_dataset = TextDataset(X_train, y_train)
-test_dataset = TextDataset(X_test, y_test)
+train_dataset = TextDataset(train_texts, train_labels)
+test_dataset = TextDataset(test_texts, test_labels)
 
 model = BertForSequenceClassification.from_pretrained('distilbert-base-uncased')
+device = torch.device("cuda")
+model.to(device)
 
 training_args = TrainingArguments(
     output_dir='./results',
     num_train_epochs=3,
-    per_device_train_batch_size=8,
+    per_device_train_batch_size=4,
     evaluation_strategy="epoch",
     logging_dir='./logs',
+    learning_rate=2e-5,
 )
 
 trainer = Trainer(
@@ -45,13 +53,6 @@ trainer = Trainer(
     eval_dataset=test_dataset,
 )
 
-test_inputs = tokenizer(X_test, padding=True, truncation=True, return_tensors='pt')
+trainer.train()
 
-df_test = pd.DataFrame({
-    'dialogue': X_test,        # The original dialogues
-    'label': y_test,           # The labels
-    'input_ids': [input_ids.tolist() for input_ids in test_inputs['input_ids']],  # Token IDs
-    'attention_mask': [mask.tolist() for mask in test_inputs['attention_mask']]   # Attention masks
-})
-
-df_test.to_csv("tokenized_test_data.csv", index=False)
+trainer.save_model("./ai_human_detector")
