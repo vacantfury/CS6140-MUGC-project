@@ -45,6 +45,13 @@ trainer = Trainer(
     eval_dataset=test_dataset,
 )
 
-trainer.train()
+test_inputs = tokenizer(X_test, padding=True, truncation=True, return_tensors='pt')
 
-trainer.save_model("./ai_human_detector")
+df_test = pd.DataFrame({
+    'dialogue': X_test,        # The original dialogues
+    'label': y_test,           # The labels
+    'input_ids': [input_ids.tolist() for input_ids in test_inputs['input_ids']],  # Token IDs
+    'attention_mask': [mask.tolist() for mask in test_inputs['attention_mask']]   # Attention masks
+})
+
+df_test.to_csv("tokenized_test_data.csv", index=False)
